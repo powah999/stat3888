@@ -1,0 +1,75 @@
+---
+title: "Health Survey Data"
+format: html
+editor: visual
+---
+
+```{r}
+# Load required packages
+library(readxl)
+library(dplyr)
+```
+
+## Creating Data Dictionary
+
+```{r}
+# Create a list of the titles of all sheets in workbook
+sheets <- excel_sheets("Desktop/Education/2025/STAT3888/Indigenous Dataset/AHSinpBasicCURFdataItemList-2.xls")
+
+# Initialise data frame to store dictionary
+combined_dictionary = data.frame()
+
+# Remove contents + detailed index sheets
+# Remove appendix classification sheets
+sheets <- sheets[c(-1,-2, -18, -19, -22, -23, -24, -25, -26, -27)] 
+
+# Loop through each of the selected sheets
+for (sheet in sheets){
+  # Display in console which sheet we are up to in the loop
+  message(sheet)
+  
+  # Read the sheet into a dataframe
+  df <- read_excel("Desktop/Education/2025/STAT3888/Indigenous Dataset/AHSinpBasicCURFdataItemList-2.xls",
+                   sheet = sheet, skip = 6)
+  
+  # Remove the empty rows and keep only useful columns
+  df <- df %>%
+    filter(!is.na(`Items & categories`)) %>%
+    dplyr::select(`SAS name`, `Items & categories`, `Main population`)
+
+  # Stack the sheet's rows onto the bottom of the combined dictionary
+  combined_dictionary <- bind_rows(combined_dictionary, df)
+}
+
+```
+
+## Creating Combined Database
+
+```{r}
+# Create list of all csv file paths
+path <- "~/Desktop/Education/2025/STAT3888/Indigenous Dataset"
+file_list <- list.files(path = path, pattern = "\\.csv?$", full.names = TRUE)
+
+indigenous_database <- c()
+
+df_list <- lapply(file_list, read.csv)
+
+df_list
+
+for (file in file_list){
+  # Display in console which file we are up to
+  message(file)
+  
+  # Read the file
+  df <- read_csv(file)
+  
+  indigenous_database <- c(indigenous_database, df)
+  #indigenous_database <- bind_cols(indigenous_database, df)
+}
+
+View(df)
+View(indigenous_database[[1]])
+
+
+sort(colnames(df_list[[2]]))
+```
