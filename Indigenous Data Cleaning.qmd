@@ -65,9 +65,4 @@ bsp_fields <- filter(combined_dictionary,
 View(bsp_fields)
 ```
 
-Summary of csv file contents
-- inp13bad: Food group intake
-- inp13bbi: Blood test results? (Cholestrol, glutamyl transferase)
-- inp13bcd: Physical activity
-- inp13bhh: Household information
-- inp13bsb: EVERYTHING!!
+Summary of csv file contents - inp13bad: Food group intake - inp13bbi: Blood test results? (Cholestrol, glutamyl transferase) - inp13bcd: Physical activity - inp13bhh: Household information - inp13bsb: EVERYTHING!!
