@@ -326,6 +326,7 @@ categorical_to_factor <- function(types, proc)
   return(proc)
 }
 proc_data <- categorical_to_factor(types, raw_data)
+
 # proc_biom <- categorical_to_factor(types_biom,raw_biom)
 # proc_nutr <- categorical_to_factor(types_nutr,raw_nutr)
 # proc_food <- categorical_to_factor(types_food,raw_food)
@@ -417,12 +418,7 @@ tech_data
 ### Save the relevant R objects for future use.
 
 ```{r}
-# head(tech_biom) 
-# head(dict_biom) 
-head(types_biom)
-save(tech_biom, dict_biom, types_biom,
-     tech_nutr, dict_nutr, types_nutr,
-     tech_food, dict_food, types_food,
+save(tech_data, dict, types,
      file = "tech_data.Rdata")
 ```
 
