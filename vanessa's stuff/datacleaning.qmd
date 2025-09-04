@@ -14,7 +14,7 @@ library(dplyr)
 
 ```{r, warning = FALSE}
 # Create a list of the titles of all sheets in workbook
-sheets <- excel_sheets("~/Documents/GitHub/stat3888/AHSinpBasicCURFdataItemList-2.xls")
+sheets <- excel_sheets("Data/AHSinpBasicCURFdataItemList-2.xls")
 
 # Initialise data frame to store dictionary
 combined_dictionary = data.frame()
@@ -29,7 +29,7 @@ for (sheet in sheets){
   message(sheet)
   
   # Read the sheet into a dataframe
-  df <- read_excel("~/Documents/GitHub/stat3888/AHSinpBasicCURFdataItemList-2.xls",
+  df <- read_excel("Data/AHSinpBasicCURFdataItemList-2.xls",
                    sheet = sheet, skip = 6)
   
   # Remove the empty rows and keep only useful columns
@@ -41,6 +41,15 @@ for (sheet in sheets){
   combined_dictionary <- bind_rows(combined_dictionary, df)
 }
 
+head(combined_dictionary)
+
+# install.packages("writexl")
+
+library(writexl)
+
+write_xlsx(combined_dictionary, "combined_dictionary.xlsx")
+write.csv(combined_dictionary, "combined_dictionary.csv", row.names = FALSE)
+
 ```
 
 ## Creating Combined Database
@@ -49,7 +58,7 @@ The BSP file seems to contain a large number (if not all) of the useful variable
 
 ```{r}
 # Create list of all csv file paths
-path <- "~/Desktop/Education/2025/STAT3888/Indigenous Dataset"
+path <- "Indigenous Dataset"
 file_list <- list.files(path = path, pattern = "\\.csv?$", full.names = TRUE)
 
 # Read files and store in list
@@ -62,7 +71,12 @@ names(df_list) <- basename(file_list)
 bsp_fields <- filter(combined_dictionary, 
                      `SAS name` %in% colnames(df_list$inp13bsp.csv))
 
-View(bsp_fields)
+# print(bsp_fields, n=20)
 ```
 
-Summary of csv file contents - inp13bad: Food group intake - inp13bbi: Blood test results? (Cholestrol, glutamyl transferase) - inp13bcd: Physical activity - inp13bhh: Household information - inp13bsb: EVERYTHING!!
+Summary of csv file contents
+- inp13bad: Food group intake
+- inp13bbi: Blood test results? (Cholestrol, glutamyl transferase)
+- inp13bcd: Physical activity
+- inp13bhh: Household information
+- inp13bsb: EVERYTHING!!
