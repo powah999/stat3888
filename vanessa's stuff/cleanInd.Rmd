@@ -1,0 +1,381 @@
+---
+title: "STAT38888 - Data cleaning script"
+author: "John T. Ormerod"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document:
+    code_folding: show
+    toc: yes
+    toc_float: true
+---
+
+# About the data
+
+Data: inp13bsp.csv 
+
+Data dictionary: combined_dictionary.csv
+
+
+# Converting the raw data to technically correct data
+
++ dict_XXXX - containing the special meanings of variables in the raw dataset.
++ types_XXXX - containing human readable variable names, and a guess of the variable type.
++ tech_XXXX - the technically correct dataset.
+
+```{r setup, include=FALSE}
+# Default knitting options
+knitr::opts_chunk$set(echo=TRUE, # Echo the code
+                      tidy=TRUE, # Nicely dity up code
+                      warning=FALSE, # No warnings please 
+                      message=FALSE) # No messages please
+
+options(warn=-1) 
+
+# Suppress start up warnings when loading libraries
+library <- function(...) {
+  suppressPackageStartupMessages(base::library(...))
+}
+```
+
+```{r libraries}
+# Load in all libraries
+# install.packages("tidyverse")
+# install.packages("here")
+# install.packages("readxl")
+# install.packages("janitor")
+# install.packages("stringr")
+# install.packages("tidyr")
+library(tidyverse)
+library(here)      # directory referencing
+library(readxl)    # reading Excel files
+library(janitor)   # data cleaning 
+library(stringr)   # string manimpuation
+library(tidyr)     # new tidy functions
+```
+
+### First we read raw data into R.
+
+```{r read_in_raw_data}
+raw_data <- read.csv(here("Indigenous Dataset/inp13bsp.csv"), header=TRUE)
+```
+
+Next we are going to create a quiet version of `readxl` function so that warning and 
+other messages don't appear in the knitted version of this document.
+
+```{r define_quiet_read_function}
+quiet_read <- purrr::quietly(readxl::read_excel)
+```
+
+Read the data dictionary
+
+```{r read_data_dictionaries}
+
+dict <- quiet_read(here("combined_dictionary.xlsx"),sheet=1)$result
+
+DT::datatable(dict)
+```
+
+### Cleaning the variable names
+
+We are going to process the data dictionary and use this information to
+process the raw datasets so that they are technically correct.
+
+```{r clean_names}
+dict <- dict %>% janitor::clean_names()
+
+DT::datatable(dict)
+```
+
+### Remove empty rows
+
+The next step will be to remove any empty rows from each of the raw 
+datasets.
+
+```{r remove_empty_rows}
+dict <- dict %>% janitor::remove_empty("rows")
+# Remove any empty rows
+DT::datatable(dict)
+```
+
+The data dictionaries are organized in blocks. For example 
+
+```{r take_a_look_at_biom2}
+# install.packages("DT")
+
+DT::datatable(dict)
+```
+ 
+The first line of each block contains a human readable name, and possibly some
+extra information.
+
+
+### Create datasets with human readable versions of the variable names
+
+```{r get_first_line_of_each_block}
+# Remove any empty rows
+dict_readable <- dict %>% 
+  filter(!is.na(sas_name))  
+
+DT::datatable(dict_readable)
+
+# THERE IS A DUPLICATE ROW NAME
+
+dict_readable %>%
+  count(sas_name) %>%
+  filter(n > 1)
+
+which(duplicated(dict_readable$sas_name) | duplicated(dict_readable$sas_name, fromLast = TRUE))
+dict_readable <- dict_readable %>%
+  distinct(sas_name, .keep_all = TRUE)
+```
+
+ 
+### Fill in blanks in the variable names
+
+```{r fill_NAs_in_variable_names}
+# Remove any empty rows
+dict <- dict %>% tidyr::fill(sas_name)
+DT::datatable(dict)
+```
+ 
+
+### Create a function to determine which variables are continuous and which are categorical
+
+Next we will identify which variables are continuous, and which are factors
+my performing a string search for each block for the word "continuous".
+
+```{r}
+get_type <- function(dict) 
+{
+  var_names <- unique(dict$sas_name)
+  var_type  <- c()
+  for (j in 1:length(var_names))
+  {
+    # Get all dictionary lines corresponding to a varible
+    # (a block of lines)
+    dict_block <- dict %>% 
+      filter(sas_name==var_names[j])
+    
+    # Take all of the characters in a block, paste them 
+    # together and make all characters lower case
+    block_string <- dict_block %>%
+      select(-sas_name) %>%
+      as.matrix() %>%
+      as.vector() %>%
+      paste(collapse="") %>%
+      tolower()
+    
+    # Assign variable if we can find the word "continuous"
+    # in the block otherwise assume that it is "categorical"
+    var_type[j] <- block_string %>% 
+      str_detect("continuous") %>% 
+      ifelse("continuous","categorical") 
+  }
+  return(var_type)
+}
+```
+
+### Try to infer the data types from the data dictionary
+ 
+```{r, eval=TRUE}  
+tib1 <- tibble(variable_type=get_type(dict))
+
+# Create a new tibble that takes the readable tibble,
+# appends the variable type, and do some minor fixing
+nrow(dict_readable)
+nrow(tib1)
+types <- bind_cols(dict_readable, tib1) %>%
+  mutate(variable_type=ifelse(sas_name%in%c("ABSHID"), "string",variable_type))
+DT::datatable(types)
+```
+
+
+### Split the description varible in the data dictionary into value and meaning columns
+
+```{r}
+library(dplyr)
+
+get_special_value_meanings <- function(dict) {
+  dict %>%
+    select(sas_name, items_categories) %>%
+    mutate(s = str_squish(items_categories)) %>%
+    group_by(sas_name) %>%
+    mutate(row_in_var = row_number()) %>%
+    filter(row_in_var > 1) %>%               # drop header row within each SAS block
+    ungroup() %>%
+    # First, try to parse "number + separator + value"
+    mutate(
+      .m = str_match(
+        s,
+        "^([0-9]+(?:\\s*[-–—]\\s*[0-9]+)?)\\s*(?:[\\.:\\)]\\s*|\\s+)(.*)$"
+      ),
+      number = .m[, 2],
+      value  = .m[, 3]
+    ) %>%
+    # If that failed, fill number-only or value-only cases
+    mutate(
+      # number-only (e.g., "2011" or "0-999")
+      number = coalesce(
+        number,
+        str_match(s, "^([0-9]+(?:\\s*[-–—]\\s*[0-9]+)?)$")[, 2]
+      ),
+      # value-only: any non-empty string that's not pure number/range
+      value = coalesce(
+        value,
+        if_else(str_detect(s, "^[0-9]+(?:\\s*[-–—]\\s*[0-9]+)?$"),
+                NA_character_,
+                s)
+      )
+    ) %>%
+    mutate(
+      number = str_squish(number),
+      value  = str_squish(value)
+    ) %>%
+    select(sas_name, number, value)
+}
+
+special_data <- get_special_value_meanings(dict)
+```
+
+```{r special_biom}
+DT::datatable(special_data)
+```
+
+In summary so far we have the following R objects:
+
++ dict_XXXX contains the dictionary category meainings.
++ special_XXXX contains the meanings of special values.
++ types_XXXX contains the variable types and human readable values.
++ raw_XXXX contains the raw data.
+
+We will assume that special values in the data dictionary are missing values if the variable type is
+"continuous". If the variable type is "categorical" then the special values are missingness indicators if
+the value is one of
+
++ "not applicable",
++ "measurement not taken - equipment faulty",
++ "measurement not taken - other reason",
++ "measurement not taken - refusal",
++ "not collected",
++ "not determined",
++ "not known",
++ "not known if currently on a diet",
++ "not measured",
++ "not reported",
++ "not stated",
++ "not used"
+
+Otherwise we will assume that the categorical value is a non-missing category.
+
+
+### Convert all categorical variables and convert them to factors in R.
+
+```{r}
+categorical_to_factor <- function(types, proc) 
+{
+  var_names <- colnames(proc)  
+  for (i in 1:length(var_names)) 
+  {
+    # Extract the inferred variable type from the types tibble
+    var_type <- types %>% 
+      filter(sas_name==var_names[i]) %>%
+      select(variable_type) %>%
+      as.character()
+    
+    # If the type is categorical turn the variable into a factor
+    if (var_type=="categorical") {
+      proc[[var_names[i]]] <- as.factor(proc[[var_names[i]]])
+    }
+  }
+  return(proc)
+}
+proc_data <- categorical_to_factor(types, raw_data)
+```
+
+### Create a function the converts raw data to technically correct data 
+
+```{r}
+miss_defs <- c("not applicable",
+               "measurement not taken - equipment faulty",
+               "measurement not taken - other reason",
+               "measurement not taken - refusal",
+               "not collected",
+               "not determined",
+               "not known",
+               "not known if currently on a diet",
+               "not measured",
+               "not reported",
+               "not stated",
+               "not used")
+
+raw_to_tech <- function(proc, special, types)
+{
+  var_names <- colnames(proc)
+  for (j in 1:length(var_names)) 
+  {
+    var_val <- var_names[j]
+    specials <- special %>%
+      filter(sas_name==var_val)
+    if (nrow(specials)>0) 
+    {
+      ind <- which(var_names==var_val)
+      var_miss_str  <- paste0(var_val,"_MISS")
+      var_miss_reas <- rep("observed",nrow(proc))
+      var_vals      <- proc[,ind]
+      var_type <- types %>% 
+        filter(sas_name==var_val) %>%
+        select(variable_type) %>%
+        as.character()
+      if (var_type=="continuous") {
+        for (i in 1:length(var_vals)) {
+          if (var_vals[i] %in% specials$value) {
+            ind2 <- which(var_vals[i]==specials$value)
+            var_vals[i]      <- NA
+            var_miss_reas[i] <- specials[ind2,3] %>% as.character()
+          }
+        }
+      }
+      if (var_type=="categorical") {
+        for (i in 1:length(var_vals)) {
+          spec_val  <- specials$value
+          spec_meam <- specials$meaning
+          if (var_vals[i] %in% spec_val) 
+          {
+            var_mean <- spec_meam[var_vals[i] == spec_val]
+            if (var_mean %in% miss_defs) {
+              var_vals[i]      <- NA
+              var_miss_reas[j] <- var_mean
+            }
+          } else {
+            var_vals[i]      <- NA
+            var_miss_reas[i] <- "unknown"
+          }
+        }
+      }
+      if (any(is.na(var_vals))) {
+        proc[,ind] <- var_vals
+        proc$dummy <- var_miss_reas
+        colnames(proc)[ncol(proc)] <- var_miss_str
+      }
+    }
+  }
+  return(proc)
+}
+```
+
+### Apply the function to each of the three main datasets
+
+```{r}
+DT::datatable(proc_data)
+
+tech_data <- raw_to_tech(proc_data, special_data, types)
+tech_data
+```
+
+### Save the relevant R objects for future use.
+
+```{r}
+save(tech_data, dict, types,
+     file = "tech_data.Rdata")
+```
+

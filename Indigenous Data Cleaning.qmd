@@ -135,7 +135,7 @@ View(df_list$inp13bsp.csv)
 filtered_bsp <- df_list$inp13bsp.csv %>%
   dplyr::select(ABSGID, ABSHID, SMOKQ2AE, ALCPER1, SUGPER1, HEDATTC)
 
-colnames(filtered_bbi) <- c("Person ID", "Household ID", "Smoking Status")
+colnames(filtered_bbi) <- c("Person ID", "Household ID", "Smoking Status", )
 
 filtered_bbi <- df_list$inp13bbi.csv %>%
   dplyr::select(ABSGID, ABSHID, DIABPRVE, DIABFPGE, DIABQ01A)

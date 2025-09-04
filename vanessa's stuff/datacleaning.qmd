@@ -1,0 +1,82 @@
+---
+title: "Health Survey Data"
+format: html
+editor: visual
+---
+
+```{r}
+# Load required packages
+library(readxl)
+library(dplyr)
+```
+
+## Creating Data Dictionary
+
+```{r, warning = FALSE}
+# Create a list of the titles of all sheets in workbook
+sheets <- excel_sheets("Data/AHSinpBasicCURFdataItemList-2.xls")
+
+# Initialise data frame to store dictionary
+combined_dictionary = data.frame()
+
+# Remove contents + detailed index sheets
+# Remove appendix classification sheets
+sheets <- sheets[c(-1,-2, -18, -19, -22, -23, -24, -25, -26, -27)] 
+
+# Loop through each of the selected sheets
+for (sheet in sheets){
+  # Display in console which sheet we are up to in the loop
+  message(sheet)
+  
+  # Read the sheet into a dataframe
+  df <- read_excel("Data/AHSinpBasicCURFdataItemList-2.xls",
+                   sheet = sheet, skip = 6)
+  
+  # Remove the empty rows and keep only useful columns
+  df <- df %>%
+    filter(!is.na(`Items & categories`)) %>%
+    dplyr::select(`SAS name`, `Items & categories`, `Main population`)
+
+  # Stack the sheet's rows onto the bottom of the combined dictionary
+  combined_dictionary <- bind_rows(combined_dictionary, df)
+}
+
+head(combined_dictionary)
+
+# install.packages("writexl")
+
+library(writexl)
+
+write_xlsx(combined_dictionary, "combined_dictionary.xlsx")
+write.csv(combined_dictionary, "combined_dictionary.csv", row.names = FALSE)
+
+```
+
+## Creating Combined Database
+
+The BSP file seems to contain a large number (if not all) of the useful variables. Thus, we will clean only the data from this file.
+
+```{r}
+# Create list of all csv file paths
+path <- "Indigenous Dataset"
+file_list <- list.files(path = path, pattern = "\\.csv?$", full.names = TRUE)
+
+# Read files and store in list
+df_list <- lapply(file_list, read.csv)
+
+# Use the name of the file as the list index
+names(df_list) <- basename(file_list)
+
+# Filter the dictionary to include only the fields from the BSP file
+bsp_fields <- filter(combined_dictionary, 
+                     `SAS name` %in% colnames(df_list$inp13bsp.csv))
+
+# print(bsp_fields, n=20)
+```
+
+Summary of csv file contents
+- inp13bad: Food group intake
+- inp13bbi: Blood test results? (Cholestrol, glutamyl transferase)
+- inp13bcd: Physical activity
+- inp13bhh: Household information
+- inp13bsb: EVERYTHING!!
