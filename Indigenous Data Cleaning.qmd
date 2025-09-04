@@ -14,7 +14,7 @@ library(dplyr)
 
 ```{r, warning = FALSE}
 # Create a list of the titles of all sheets in workbook
-sheets <- excel_sheets("~/Documents/GitHub/stat3888/AHSinpBasicCURFdataItemList-2.xls")
+sheets <- excel_sheets("AHSinpBasicCURFdataItemList-2.xls")
 
 # Initialise data frame to store dictionary
 combined_dictionary = data.frame()
@@ -29,7 +29,7 @@ for (sheet in sheets){
   message(sheet)
   
   # Read the sheet into a dataframe
-  df <- read_excel("~/Documents/GitHub/stat3888/AHSinpBasicCURFdataItemList-2.xls",
+  df <- read_excel("AHSinpBasicCURFdataItemList-2.xls",
                    sheet = sheet, skip = 6)
   
   # Remove the empty rows and keep only useful columns
@@ -49,7 +49,7 @@ The BSP file seems to contain a large number (if not all) of the useful variable
 
 ```{r}
 # Create list of all csv file paths
-path <- "~/Desktop/Education/2025/STAT3888/Indigenous Dataset"
+path <- "Indigenous Dataset"
 file_list <- list.files(path = path, pattern = "\\.csv?$", full.names = TRUE)
 
 # Read files and store in list
@@ -66,3 +66,82 @@ View(bsp_fields)
 ```
 
 Summary of csv file contents - inp13bad: Food group intake - inp13bbi: Blood test results? (Cholestrol, glutamyl transferase) - inp13bcd: Physical activity - inp13bhh: Household information - inp13bsb: EVERYTHING!!
+
+
+## FUNCTION: build_data_dictionary
+## given paths to .csv files, i want to make a smaller data dictionary ONLY for those .csv files
+```{r}
+library(readr)
+library(purrr)
+library(stringr)
+
+# Build a subset data dictionary for selected CSVs
+build_data_dictionary <- function(files,
+                                  dict = combined_dictionary,
+                                  dir = "indigenous_dataset",
+                                  normalise = TRUE,
+                                  write_csv = FALSE,
+                                  out_path = NULL) {
+  # sanity checks
+  stopifnot(all(c("SAS name", "Items & categories") %in% names(dict)))
+  files  <- unique(files)
+  paths  <- file.path(dir, files)
+  if (any(!file.exists(paths))) {
+    missing <- files[!file.exists(paths)]
+    stop("Missing file(s): ", paste(missing, collapse = ", "))
+  }
+
+  # normalize SAS names in the dictionary (trim/squish)
+  if (normalise) {
+    dict <- dict %>% mutate(`SAS name` = str_squish(`SAS name`))
+  }
+
+  # read only headers from each CSV without mangling names
+  cols_df <- map2_dfr(files, paths, ~ {
+    cols <- names(readr::read_csv(.y, n_max = 0, show_col_types = FALSE))
+    tibble(file = .x,
+           `SAS name` = if (normalise) str_squish(cols) else cols)
+  }) %>% distinct()
+
+  # map variable -> list of source files containing it
+  source_map <- cols_df %>%
+    group_by(`SAS name`) %>%
+    summarise(SourceFiles = paste(sort(unique(file)), collapse = ", "),
+              .groups = "drop")
+
+  # keep only dictionary rows whose SAS name appears in any selected file
+  out <- dict %>%
+    semi_join(source_map, by = "SAS name") %>%
+    left_join(source_map, by = "SAS name") %>%
+    relocate(SourceFiles, .after = `SAS name`) %>%
+    arrange(`SAS name`, `Items & categories`)
+
+  # optional export
+  if (write_csv) {
+    if (is.null(out_path)) {
+      stem <- paste0(tools::file_path_sans_ext(files), collapse = "__")
+      out_path <- file.path(dir, paste0("data_dictionary__", stem, ".csv"))
+    }
+    readr::write_csv(out, out_path)
+    message("Wrote: ", out_path)
+  }
+  out
+}
+
+```
+
+## Running the function build_data_dictionary()
+## make a data dictionary for "inp13bsp.csv", "inp13bbi.csv"
+
+```{r}
+# make a data dictionary for "inp13bsp.csv", "inp13bbi.csv"
+
+dd_two <- build_data_dictionary(
+  c("inp13bsp.csv", "inp13bbi.csv"),
+  dict = combined_dictionary,
+  dir = "indigenous_dataset",
+  write_csv = TRUE  # set to FALSE if you don't want a file
+)
+
+View(dd_two)
+```

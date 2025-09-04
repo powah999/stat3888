@@ -51,10 +51,13 @@ rsconnect/
 ## edward's folder
 indigenous_dataset
 indigenous_dataset/*
+Data/*
+Data
+Indigenous Dataset
 
 ## ignore spreadsheet files
-.csv
-.xlsx
-
+*.csv
+*.xlsx
+*.xls
 
 .DS_Store
