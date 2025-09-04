@@ -130,16 +130,16 @@ ggplot(data = df_list[["inp13bhh.csv"]], aes(x = factor(RAECURF), fill = factor(
 
 # Filter and rename columns of csv data
 filtered_bsp <- df_list$inp13bsp.csv %>%
-  dplyr::select(ABSGID, ABSHID, SMOKQ2AE, ALCPER1, SUGPER1, HEDATTC, DIABQ01A, SABDYMS, AGEEC)
-colnames(filtered_bsp) <- c("PersonID", "HouseholdID", "Cigarettes", "Alcohol", "Sugar", "Education", "Family_Diabetes", "Pregnant", "Age")
+  dplyr::select(ABSGID, ABSHID, SMOKQ2AE, ALCPER1, SUGPER1, HEDATTC, DIABQ01A, SABDYMS, AGEEC, SATPER1)
+colnames(filtered_bsp) <- c("PersonID", "HouseholdID", "Cigarettes", "Alcohol", "Sugar", "Education", "Family_Diabetes", "Pregnant", "Age", "Fat")
 
 filtered_bbi <- df_list$inp13bbi.csv %>%
   dplyr::select(ABSGID, ABSHID, DIABPRVE)
 colnames(filtered_bbi) <- c("PersonID", "HouseholdID", "Diabetes")
 
 filtered_bhh <- df_list$inp13bhh.csv %>%
-  dplyr::select(ABSHID, RAECURF)
-colnames(filtered_bhh) <- c("HouseholdID", "Remoteness")
+  dplyr::select(ABSHID, RAECURF, SF2SA1DB)
+colnames(filtered_bhh) <- c("HouseholdID", "Remoteness", "Socio-Economic")
 
 # Join data on Household ID and Person ID
 joined_df <- left_join(filtered_bbi, filtered_bhh, by = "HouseholdID")
@@ -151,7 +151,8 @@ filtered_joined <- joined_df %>%
          Diabetes != 0,
          Diabetes != 8, 
          Family_Diabetes == 5,
-         Remoteness %in% c(1, 2))
+         Remoteness %in% c(1, 2),
+         `Socio-Economic` != 0)
 
 filtered_joined$Cigarettes[filtered_joined$Cigarettes == 97] <- 0
 
