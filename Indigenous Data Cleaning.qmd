@@ -127,14 +127,15 @@ ggplot(data = df_list[["inp13bhh.csv"]], aes(x = factor(RAECURF), fill = factor(
 ```
 
 ```{r}
+
 # Filter and rename columns of csv data
 filtered_bsp <- df_list$inp13bsp.csv %>%
   dplyr::select(ABSGID, ABSHID, SMOKQ2AE, ALCPER1, SUGPER1, HEDATTC, DIABQ01A, SABDYMS, AGEEC)
 colnames(filtered_bsp) <- c("PersonID", "HouseholdID", "Cigarettes", "Alcohol", "Sugar", "Education", "Family_Diabetes", "Pregnant", "Age")
 
 filtered_bbi <- df_list$inp13bbi.csv %>%
-  dplyr::select(ABSGID, ABSHID, DIABPRVE, DIABFPGE)
-colnames(filtered_bbi) <- c("PersonID", "HouseholdID", "Plasma_Glucose", "HBA1C")
+  dplyr::select(ABSGID, ABSHID, DIABPRVE)
+colnames(filtered_bbi) <- c("PersonID", "HouseholdID", "Diabetes")
 
 filtered_bhh <- df_list$inp13bhh.csv %>%
   dplyr::select(ABSHID, RAECURF)
@@ -147,14 +148,26 @@ joined_df <- left_join(joined_df, filtered_bsp, by = c("PersonID", "HouseholdID"
 # Filter out for our sample constraints
 filtered_joined <- joined_df %>%
   filter(Pregnant != 4,
-         Plasma_Glucose != 0,
-         HBA1C != 0, 
-         Family_Diabetes != c(5, 6))
+         Diabetes != 0,
+         Diabetes != 8, 
+         Family_Diabetes == 5,
+         Remoteness %in% c(1, 2))
 
-table(filtered_joined$Remoteness)
+filtered_joined$Cigarettes[filtered_joined$Cigarettes == 97] <- 0
+
+filtered_joined$Age[filtered_joined$Age == 18]
 
 # View
 View(filtered_joined)
+
+```
+
+```{r}
+ggplot(filtered_joined, aes(x = Sugar)) +
+  geom_boxplot() +
+  theme_minimal()
+
+
 
 ```
 
