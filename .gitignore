@@ -47,3 +47,14 @@ po/*~
 
 # RStudio Connect folder
 rsconnect/
+
+## edward's folder
+indigenous_dataset
+indigenous_dataset/*
+
+## ignore spreadsheet files
+.csv
+.xlsx
+
+
+.DS_Store
