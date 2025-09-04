@@ -43,7 +43,7 @@ for (sheet in sheets){
 
 ```
 
-## Creating Combined Database
+## Investigating csv file contents
 
 The BSP file seems to contain a large number (if not all) of the useful variables. Thus, we will clean only the data from this file.
 
@@ -59,10 +59,90 @@ df_list <- lapply(file_list, read.csv)
 names(df_list) <- basename(file_list)
 
 # Filter the dictionary to include only the fields from the BSP file
-bsp_fields <- filter(combined_dictionary, 
-                     `SAS name` %in% colnames(df_list$inp13bsp.csv))
+inp13bad <- filter(combined_dictionary, 
+                     `SAS name` %in% colnames(df_list$`inp13bad (1).csv`))
+View(inp13bad)
+                   
+inp13bbi <- filter(combined_dictionary, 
+                     `SAS name` %in% colnames(df_list$`inp13bbi.csv`))
+View(inp13bbi)
 
-View(bsp_fields)
+inp13bcd <- filter(combined_dictionary, 
+                     `SAS name` %in% colnames(df_list$`inp13bcd.csv`))
+View(inp13bcd)
+
+inp13bcn <- filter(combined_dictionary, 
+                     `SAS name` %in% colnames(df_list$`inp13bcn.csv`))
+
+View(inp13bcn)
+
+inp13bcp <- filter(combined_dictionary, 
+                     `SAS name` %in% colnames(df_list$`inp13bcp.csv`))
+
+View(inp13bcp)
+
+inp13bfd <- filter(combined_dictionary, 
+                     `SAS name` %in% colnames(df_list$`inp13bfd.csv`))
+View(inp13bfd)
+
+inp13bhh <- filter(combined_dictionary, 
+                     `SAS name` %in% colnames(df_list$`inp13bhh.csv`))
+View(inp13bhh)
+
+inp13bpa <- filter(combined_dictionary, 
+                     `SAS name` %in% colnames(df_list$`inp13bpa.csv`))
+View(inp13bpa)
+
+inp13bpe <- filter(combined_dictionary, 
+                     `SAS name` %in% colnames(df_list$`inp13bpe.csv`))
+View(inp13bpe)
+
+inp13bsp <- filter(combined_dictionary, 
+                     `SAS name` %in% colnames(df_list$`inp13bsp.csv`))
+View(inp13bsp)
+
+inp13bsu <- filter(combined_dictionary, 
+                     `SAS name` %in% colnames(df_list$`inp13bsu.csv`))
+View(inp13bsu)
+
+inp13bta <- filter(combined_dictionary, 
+                     `SAS name` %in% colnames(df_list$`inp13bta.csv`))
+View(inp13bta)
+                   
+```
+
+```{r}
+
+ggplot(data = df_list[["inp13bhh.csv"]], aes(x = factor(RAECURF), fill = factor(RAECURF))) +
+  scale_x_discrete(labels = c("1" = "Non-remote", "2" = "Remote")) +
+  geom_bar() +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  labs(
+    title = "Frequency of Remote and Non-Remote Survey Participants",
+    x = element_blank(),
+    y = "Frequency",
+  )
+
+ggplot(data = df_list[["inp13bsp.csv"]], aes(x = factor(ABSBID), fill = factor(ABSBID))) +
+  geom_bar() +
+  theme_minimal()
+
+View(df_list$inp13bsp.csv)
+```
+
+```{r}
+filtered_bsp <- df_list$inp13bsp.csv %>%
+  dplyr::select(ABSGID, ABSHID, SMOKQ2AE, ALCPER1, SUGPER1, HEDATTC)
+
+colnames(filtered_bbi) <- c("Person ID", "Household ID", "Smoking Status")
+
+filtered_bbi <- df_list$inp13bbi.csv %>%
+  dplyr::select(ABSGID, ABSHID, DIABPRVE, DIABFPGE, DIABQ01A)
+
+
+View(filtered_data)
+
 ```
 
 Summary of csv file contents
@@ -71,3 +151,76 @@ Summary of csv file contents
 - inp13bcd: Physical activity
 - inp13bhh: Household information
 - inp13bsb: EVERYTHING!!
+
+
+VARIABLES NEEDED
+
+- Diabetes [BBI]
+
+DIABPRVE
+Diabetes prevalence - HbA1c (%)
+Persons aged 18 years and over who participated in the biomedical component
+
+DIABFPGE
+Diabetes prevalence - fasting plasma glucose (mmol/L)
+Persons aged 18 years and over who participated in the biomedical component and fasted for 8 hours or more
+
+- Family History of Diabetes [BSP]
+
+DIABQ01A
+Family history of Diabetes
+All persons
+
+- Remoteness [BHH]
+
+RAECURF
+Remoteness Area (ASGS 2011) [BHH]
+Households
+
+
+- Smoking status [BSP]
+
+SMKPAROX
+Presence of parent during smoking questions
+All selected persons 15–17 years
+
+SMKSTAT
+Smoker status
+All persons aged 15 years and over
+
+SMKDAILY
+Daily smoker status
+All persons aged 15 years and over
+
+SMOKQ2AE
+Number of cigarettes usually smokes daily
+All persons aged 15 years and over
+
+
+- Alcohol [BSP]
+
+ALCPER1
+Percentage of energy from alcohol (Day1)
+All persons
+
+
+- Sugar intake [BSP]
+
+SUGPER1
+Percentage of energy from total sugars (Day1)
+All persons
+
+- Education [BSP]
+	
+HEDATTC
+Highest level of educational attainment
+All persons aged 15 years and over
+
+
+
+TWO MODELS:
+Logistic regression: diabetes or not? One for each region. Look at the significance of each predictor variable.
+
+Interperet the models to figure out which predictor variables are most significant in each region. 
+
+
