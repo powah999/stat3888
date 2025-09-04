@@ -18,25 +18,9 @@ Data dictionary: combined_dictionary.csv
 
 # Converting the raw data to technically correct data
 
-The first set of code chunks below "attempt" to convert the raw data to technically correct data
-(I have done my best to do this, but there could still be problems with my code - it should be checked). 
-The end product of the script below is to creates 9  tibbles
-
 + dict_XXXX - containing the special meanings of variables in the raw dataset.
 + types_XXXX - containing human readable variable names, and a guess of the variable type.
 + tech_XXXX - the technically correct dataset.
-
-where XXXX is one of biom, nutr or food. The variable types of each variable in 
-tech_XXXX should be correct, and NAs should correspond to missing values. In addition
-variables containing missing values contain "_MISS" versions of the variable which contain
-the *reason* the value is missing. For example the variable "PHDCMWBC" has a corresponding
-variable "PHDCMWBC_MISS" containing the reason values in "PHDCMWBC" are missing.
-
-The 9 main tibbles are then saved as an Rdata file called "tech_data.Rdata" which can be
-loaded into memory using the `load("tech_data.Rdata")` command.
-
-The following R program is meant to help get you started. I place no guarantees
-that this code is bug free.
 
 ```{r setup, include=FALSE}
 # Default knitting options
@@ -73,11 +57,6 @@ library(tidyr)     # new tidy functions
 
 ```{r read_in_raw_data}
 raw_data <- read.csv(here("Indigenous Dataset/inp13bsp.csv"), header=TRUE)
-
-head(raw_data)
-
-nrow(raw_data)
-ncol(raw_data)
 ```
 
 Next we are going to create a quiet version of `readxl` function so that warning and 
@@ -87,8 +66,7 @@ other messages don't appear in the knitted version of this document.
 quiet_read <- purrr::quietly(readxl::read_excel)
 ```
 
-Read the data dictionary for each of the three data sources which are located
-in sheets 1 to 3 of the "nutmstatDataItems2019.xlsx" file.
+Read the data dictionary
 
 ```{r read_data_dictionaries}
 
@@ -106,9 +84,6 @@ process the raw datasets so that they are technically correct.
 dict <- dict %>% janitor::clean_names()
 
 DT::datatable(dict)
-# dict_biom <- dict_biom %>% janitor::clean_names() %>% rename(extra=x3)  
-# dict_nutr <- dict_nutr %>% janitor::clean_names() %>% rename(extra1=x3,extra2=x4) 
-# dict_food <- dict_food %>% janitor::clean_names() %>% rename(extra=x3) 
 ```
 
 ### Remove empty rows
@@ -143,6 +118,8 @@ dict_readable <- dict %>%
 
 DT::datatable(dict_readable)
 
+# THERE IS A DUPLICATE ROW NAME
+
 dict_readable %>%
   count(sas_name) %>%
   filter(n > 1)
@@ -154,10 +131,6 @@ dict_readable <- dict_readable %>%
 
  
 ### Fill in blanks in the variable names
-
-The blocks are defined by a variable name, e.g. "BMISC" and any NAs below it
-correspond to this variable. So we are going to identify the blocks using the
-fill function
 
 ```{r fill_NAs_in_variable_names}
 # Remove any empty rows
@@ -174,7 +147,6 @@ my performing a string search for each block for the word "continuous".
 ```{r}
 get_type <- function(dict) 
 {
-  #dict <- dict_nutr
   var_names <- unique(dict$sas_name)
   var_type  <- c()
   for (j in 1:length(var_names))
@@ -207,8 +179,6 @@ get_type <- function(dict)
  
 ```{r, eval=TRUE}  
 tib1 <- tibble(variable_type=get_type(dict))
-# tib2 <- tibble(variable_type=rep("continuous",nrow(nutr_readable)))
-# tib3 <- tibble(variable_type=get_type(dict_food))
 
 # Create a new tibble that takes the readable tibble,
 # appends the variable type, and do some minor fixing
@@ -224,7 +194,6 @@ DT::datatable(types)
 
 ```{r}
 library(dplyr)
-library(stringr)
 
 get_special_value_meanings <- function(dict) {
   dict %>%
@@ -298,11 +267,6 @@ the value is one of
 
 Otherwise we will assume that the categorical value is a non-missing category.
 
-Remove columns in the "food" dataset with columns we don't have dictionary items for.
-These seem to be some type of "id" variables, perhaps, for state, council or suburb
-level identification.
-
- 
 
 ### Convert all categorical variables and convert them to factors in R.
 
@@ -326,10 +290,6 @@ categorical_to_factor <- function(types, proc)
   return(proc)
 }
 proc_data <- categorical_to_factor(types, raw_data)
-
-# proc_biom <- categorical_to_factor(types_biom,raw_biom)
-# proc_nutr <- categorical_to_factor(types_nutr,raw_nutr)
-# proc_food <- categorical_to_factor(types_food,raw_food)
 ```
 
 ### Create a function the converts raw data to technically correct data 
@@ -410,9 +370,6 @@ DT::datatable(proc_data)
 
 tech_data <- raw_to_tech(proc_data, special_data, types)
 tech_data
-# tech_biom <- raw_to_tech(proc_biom, special_biom, types_biom)
-# tech_nutr <- raw_to_tech(proc_nutr, special_nutr, types_nutr)
-# tech_food <- raw_to_tech(proc_food, special_food, types_food)  
 ```
 
 ### Save the relevant R objects for future use.
