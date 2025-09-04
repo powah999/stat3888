@@ -124,24 +124,37 @@ ggplot(data = df_list[["inp13bhh.csv"]], aes(x = factor(RAECURF), fill = factor(
     y = "Frequency",
   )
 
-ggplot(data = df_list[["inp13bsp.csv"]], aes(x = factor(ABSBID), fill = factor(ABSBID))) +
-  geom_bar() +
-  theme_minimal()
-
-View(df_list$inp13bsp.csv)
 ```
 
 ```{r}
+# Filter and rename columns of csv data
 filtered_bsp <- df_list$inp13bsp.csv %>%
-  dplyr::select(ABSGID, ABSHID, SMOKQ2AE, ALCPER1, SUGPER1, HEDATTC)
-
-colnames(filtered_bbi) <- c("Person ID", "Household ID", "Smoking Status", )
+  dplyr::select(ABSGID, ABSHID, SMOKQ2AE, ALCPER1, SUGPER1, HEDATTC, DIABQ01A, SABDYMS, AGEEC)
+colnames(filtered_bsp) <- c("PersonID", "HouseholdID", "Cigarettes", "Alcohol", "Sugar", "Education", "Family_Diabetes", "Pregnant", "Age")
 
 filtered_bbi <- df_list$inp13bbi.csv %>%
-  dplyr::select(ABSGID, ABSHID, DIABPRVE, DIABFPGE, DIABQ01A)
+  dplyr::select(ABSGID, ABSHID, DIABPRVE, DIABFPGE)
+colnames(filtered_bbi) <- c("PersonID", "HouseholdID", "Plasma_Glucose", "HBA1C")
 
+filtered_bhh <- df_list$inp13bhh.csv %>%
+  dplyr::select(ABSHID, RAECURF)
+colnames(filtered_bhh) <- c("HouseholdID", "Remoteness")
 
-View(filtered_data)
+# Join data on Household ID and Person ID
+joined_df <- left_join(filtered_bbi, filtered_bhh, by = "HouseholdID")
+joined_df <- left_join(joined_df, filtered_bsp, by = c("PersonID", "HouseholdID"))
+
+# Filter out for our sample constraints
+filtered_joined <- joined_df %>%
+  filter(Pregnant != 4,
+         Plasma_Glucose != 0,
+         HBA1C != 0, 
+         Family_Diabetes != c(5, 6))
+
+table(filtered_joined$Remoteness)
+
+# View
+View(filtered_joined)
 
 ```
 
